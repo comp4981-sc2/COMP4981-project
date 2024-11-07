@@ -7,6 +7,10 @@ from contextlib import redirect_stdout
 import ast
 import traceback
 
+# act as .env file
+# dont commit expose your key
+AZURE_API_KEY = "YOUR_AZURE_API_KEY"
+
 class TestResult:
     def __init__(self):
         self.passed = 0
@@ -135,7 +139,7 @@ def run_tests(generated_code, test_code, import_statements):
 def main():
     try:
         client = AzureOpenAI(
-            api_key="5178fd37076342ea94cc7d8cc40f6b89",
+            api_key=AZURE_API_KEY,
             api_version="2024-06-01",
             azure_endpoint="https://hkust.azure-api.net"
         )
