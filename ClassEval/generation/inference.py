@@ -46,7 +46,7 @@ def args_init():
     parser.add_argument(
         "--checkpoint",
         type=str,
-        default="WizardLM/WizardCoder-15B-V1.0",
+        default="deepseek-ai/DeepSeek-Coder-V2-Lite-Base",
         help="checkpoint of the model",
     )
     parser.add_argument(

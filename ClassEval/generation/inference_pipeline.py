@@ -1,5 +1,5 @@
-# import torch
-# from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, AutoModel
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, AutoModel
 import json
 from tqdm import tqdm
 from inference_util import InferenceUtil, ModelName, GenerationStrategy
@@ -80,19 +80,19 @@ class InferencePipeline:
         #         eos_token_id = self.tokenizer.eos_token_id,
         #         pad_token_id = self.tokenizer.pad_token_id
         #     )
-        # else:
-        #     self.tokenizer = AutoTokenizer.from_pretrained(self.checkpoint, trust_remote_code = True)
-        #     self.model = AutoModelForCausalLM.from_pretrained(self.checkpoint, trust_remote_code = True, torch_dtype = torch.float16, device_map="auto")
-        #     self.model = self.model.eval()
-        #     self.generation_config = GenerationConfig(
-        #         temperature = self.temperature,
-        #         eos_token_id = self.tokenizer.eos_token_id,
-        #         pad_token_id = self.tokenizer.pad_token_id,
-        #         do_sample = True
-        #     ) if self.greedy == 0 else GenerationConfig(
-        #         eos_token_id = self.tokenizer.eos_token_id,
-        #         pad_token_id = self.tokenizer.pad_token_id
-        #     )
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(self.checkpoint, trust_remote_code = True)
+            self.model = AutoModelForCausalLM.from_pretrained(self.checkpoint, trust_remote_code = True, torch_dtype = torch.float16, device_map="auto")
+            self.model = self.model.eval()
+            self.generation_config = GenerationConfig(
+                temperature = self.temperature,
+                eos_token_id = self.tokenizer.eos_token_id,
+                pad_token_id = self.tokenizer.pad_token_id,
+                do_sample = True
+            ) if self.greedy == 0 else GenerationConfig(
+                eos_token_id = self.tokenizer.eos_token_id,
+                pad_token_id = self.tokenizer.pad_token_id
+            )
 
     def save_result(self, result):
         with open(self.output_path, 'w', encoding = 'utf-8') as f:
@@ -101,36 +101,33 @@ class InferencePipeline:
     def model_generate(self, prompt):
         # * ===== OpenAi GPT =====
         if self.model_name == ModelName.GPT_3_5.value or self.model_name == ModelName.GPT_4.value or self.model_name == ModelName.GPT_4o_mini.value:
-            openai.api_key = self.openai_key
-            openai.api_base = self.openai_base
+            client = openai.AzureOpenAI(
+                api_key=self.openai_key,
+                api_version="2024-06-01",
+                azure_endpoint=self.openai_base
+            )
             if self.model_name == ModelName.GPT_3_5.value:
-                response = openai.ChatCompletion.create(
+                response = client.chat.completions.create(
                     max_tokens=self.max_length,
                     temperature=0 if self.greedy == 1 else self.temperature,
-                    model="gpt-3.5-turbo",
+                    model="gpt-3.5-turbo",  
                     messages=[
                         {"role": "system", "content": "You are a helpful assistant."},
                         {"role": "user", "content": prompt}
                     ]
                 )
             elif self.model_name == ModelName.GPT_4.value:
-                response = openai.ChatCompletion.create(
+                 response = client.chat.completions.create(
                     max_tokens=self.max_length,
                     temperature=0 if self.greedy == 1 else self.temperature,
-                    model="gpt-4",
+                    model="gpt-4",  
                     messages=[
                         {"role": "system", "content": "You are a helpful assistant."},
                         {"role": "user", "content": prompt}
                     ]
                 )
-            elif self.model_name == ModelName.GPT_4o_mini.value:
-                
-                client = openai.AzureOpenAI(
-                    api_key=self.openai_key,
-                    api_version="2024-06-01",
-                    azure_endpoint=self.openai_base
-                )
 
+            elif self.model_name == ModelName.GPT_4o_mini.value:
                 response = client.chat.completions.create(
                     max_tokens=self.max_length,
                     temperature=0 if self.greedy == 1 else self.temperature,
@@ -157,23 +154,27 @@ class InferencePipeline:
         #                                   max_length = self.max_length, do_sample = self.do_sample, eos_token_id = 32021)
         #     outputs = self.tokenizer.decode(outputs[0], skip_special_tokens = True)
         # # * ===== DeepSeek Coder V2 =====
-        # # elif self.model_name == ModelName.DeepSeekCoder_inst.value:
-        # #     messages=[
-        # #         { "role": "user", "content": prompt }
-        # #     ]
-        # #     input_ids = self.tokenizer.apply_chat_template(messages, add_generation_prompt = True, return_tensors = "pt",
-        # #                                                    max_length = self.max_length, truncation = True).to(self.cuda)
-        # #     # 32021 is the id of <|EOT|> token
-        # #     outputs = self.model.generate(input_ids, generation_config = self.generation_config, 
-        # #                                   max_length = self.max_length, do_sample = self.do_sample, eos_token_id = 32021)
-        # #     outputs = self.tokenizer.decode(outputs[0], skip_special_tokens = True)
+        elif self.model_name == ModelName.DeepSeekCoder_inst.value:
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt }
+            ]
+            # Tokenized input (self.tokenizer for each model is different)
+            # add_generation_prompt: add tokens that indicate the start of bot response (eg, ... <|im_start|>assistant)
+            input_ids = self.tokenizer.apply_chat_template(messages, add_generation_prompt = True, return_tensors = "pt",
+                                                           max_length = self.max_length, truncation = True).to(self.cuda)
+            
+            outputs = self.model.generate(input_ids, generation_config = self.generation_config, 
+                                          max_length = self.max_length, do_sample = self.do_sample, eos_token_id = 32021)
+            
+            outputs = self.tokenizer.decode(outputs[0], skip_special_tokens = True)
         # elif self.model_name == ModelName.ChatGLM.value:
         #     outputs, _ = self.model.chat(self.tokenizer, prompt, temperature = self.temperature, do_sample = self.do_sample)
-        # else:
-        #     input_ids = self.tokenizer.encode(prompt, return_tensors = "pt", max_length = self.max_length, truncation = True).to(self.cuda)
-        #     outputs = self.model.generate(input_ids, generation_config = self.generation_config, 
-        #                                     max_length = self.max_length, do_sample = self.do_sample)
-        #     outputs = self.tokenizer.decode(outputs[0], skip_special_tokens = True)
+        else:
+            input_ids = self.tokenizer.encode(prompt, return_tensors = "pt", max_length = self.max_length, truncation = True).to(self.cuda)
+            outputs = self.model.generate(input_ids, generation_config = self.generation_config, 
+                                            max_length = self.max_length, do_sample = self.do_sample)
+            outputs = self.tokenizer.decode(outputs[0], skip_special_tokens = True)
         return outputs
 
     def construct_prompt(self, strategy, info):

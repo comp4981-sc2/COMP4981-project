@@ -30,7 +30,9 @@ class InferenceUtil:
 
     @staticmethod
     def generate_prompt(instruction, model_name):
-        if model_name == ModelName.DeepSeekCoder_inst.value or model_name == ModelName.Gemini_Pro.value:
+        if model_name == ModelName.DeepSeekCoder_inst.value or model_name == ModelName.DeepSeekCoder_V2.value or model_name == ModelName.Gemini_Pro.value:
+            print("Generated Instruction: ", instruction)
+            
             return instruction
 
         elif model_name == ModelName.Magicoder.value:
