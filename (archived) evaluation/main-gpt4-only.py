@@ -150,7 +150,7 @@ def print_task_accuracies(results):
     for i, result in enumerate(results):
         task_total_tests = (result['test_results']['passed'] + 
                           result['test_results']['failed'] + 
-                          result['test_results']['errors'])
+                          result['test_results']['errors'])\\\\\
         
         task_accuracy = (result['test_results']['passed'] / task_total_tests * 100) if task_total_tests > 0 else 0
         
