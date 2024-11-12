@@ -26,7 +26,7 @@ openai_key = os.getenv("OPENAI_KEY")
 # Define the models and generation strategies
 models = {
     16: "GPT-4o-mini",
-    17: "DeepSeekCoder-V2"
+    # 17: "DeepSeekCoder-V2"
 }
 generation_strategies = {
     0: "H",
@@ -34,7 +34,7 @@ generation_strategies = {
     # 2: "C"
 }
 greedy_strategies = {
-    0: f"pass{sample}",
+    # 0: f"pass{sample}",
     1: "g"
 }
 
@@ -62,7 +62,7 @@ def create_output_path(model, gen_mode, greedy):
     model_name = models[model]
     gen_mode_name = generation_strategies[gen_mode]
     greedy_name = greedy_strategies[greedy]
-    return f"output/{model_name}_{gen_mode_name}_{greedy_name}.json"
+    return f"./output/model_output/{model_name}_{gen_mode_name}_{greedy_name}.json"
 
 # Iterate over models and generation strategies
 for model in models:
@@ -70,10 +70,17 @@ for model in models:
         for greedy in greedy_strategies:
             custom_output_path = create_output_path(model, gen_mode, greedy)
             command = f"{base_command} --model {model} --generation_strategy {gen_mode} --greedy {greedy} --output_path {custom_output_path}"
-            print(f"Running command: {command}")
+            
+            print(f"\n{'='*50}")
+            print(f"Model: {models[model]}, Generation Strategy: {generation_strategies[gen_mode]}, Greedy: {greedy_strategies[greedy]}")
+            print(f"Running command: \n{command}")
+            
             run_command(command)
             
             # Run evaluation
             eval_command = f"python classeval_evaluation/evaluation.py --source_file_name {custom_output_path} --greedy {greedy} --eval_data ClassEval_data"
-            print(f"Running evaluation: {eval_command}")
+            
+            print(f"Running evaluation: \n{eval_command}")
+            print(f"{'='*50}")
+            
             run_command(eval_command)

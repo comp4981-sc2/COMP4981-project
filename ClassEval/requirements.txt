@@ -17,3 +17,4 @@ torch~=1.10.2
 openai~=1.54.3
 transformers~=4.21.3
 tqdm~=4.65.0
+func_timeout~=4.3.5
